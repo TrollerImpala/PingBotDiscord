@@ -101,7 +101,7 @@ async def configurar(
         f"• **Canal:** {canal.mention}\n"
         f"• **Bot:** {bot_trigger.mention}\n"
         f"• **Rol a mencionar:** {rol.mention}\n"
-        f"• **Mensaje:** {msg}",
+        f"• **Mensaje:** {msg}"
     )
 
 @configurar.error
