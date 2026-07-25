@@ -2,7 +2,32 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from threading import Thread
+from flask import Flask
+
 import os
+
+app = Flask(__name__)
+
+
+@app.route('/')
+def home():
+  return 'Bot activo 24/7'
+
+
+def run():
+  # Render inyecta el puerto en la variable PORT
+  port = int(os.environ.get('PORT', 8080))
+  app.run(host='0.0.0.0', port=port)
+
+
+def keep_alive():
+  t = Thread(target=run)
+  t.start()
+
+
+keep_alive()
+
 from dotenv import load_dotenv
 load_dotenv()
 
