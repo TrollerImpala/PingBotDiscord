@@ -6,12 +6,38 @@ import os
 from dotenv import load_dotenv
 load_dotenv()
 
+import json
+
 intents = discord.Intents.default()
 intents.message_content = True
 
 bot = commands.Bot(command_prefix='-&', intents=intents)
 
-configuraciones = {}
+CONFIG_FILE = "config.json"
+
+def cargar_configuracion():
+    if os.path.exists(CONFIG_FILE):
+
+        try:
+            with open(CONFIG_FILE, "r", encoding="utf-8") as file:
+                datos = json.load(file)
+                return {int(k): v for k, v in datos.items()}
+            
+        except Exception as e:
+            print(f"Error al cargar {CONFIG_FILE}: {e}")
+            return {}
+    return {}
+
+def guardar_configuracion(configuraciones):
+    try:
+        with open(CONFIG_FILE, "w", encoding="utf-8") as file:
+            json.dump(configuraciones, file, indent=4)
+
+    except Exception as e:
+        print(f"Error al guardar {CONFIG_FILE}: {e}")
+
+
+configuraciones = cargar_configuracion()
 
 @bot.event
 async def on_ready():
@@ -42,6 +68,8 @@ async def configurar(
         "bot" : bot_trigger.id,
         "msg" : msg
     }
+
+    guardar_configuracion(configuraciones)
 
     await interaction.response.send_message(
 
