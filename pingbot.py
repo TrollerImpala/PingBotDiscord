@@ -40,17 +40,26 @@ bot = commands.Bot(command_prefix='-&', intents=intents)
 CONFIG_FILE = "config.json"
 
 def cargar_configuracion():
-    if os.path.exists(CONFIG_FILE):
+    if not os.path.exists("config.json") or os.path.getsize("config.json") == 0:
 
-        try:
-            with open(CONFIG_FILE, "r", encoding="utf-8") as file:
-                datos = json.load(file)
-                return {int(k): v for k, v in datos.items()}
-            
-        except Exception as e:
-            print(f"Error al cargar {CONFIG_FILE}: {e}")
-            return {}
-    return {}
+        with open("config.json", "w", encoding="utf-8") as f:
+            json.dump({}, f)
+        
+        return {}
+
+    try:
+        with open("config.json", "r", encoding="utf-8") as f:
+            datos = json.load(f)
+            return {int(k): v for k, v in datos.items()}
+        
+    except (json.JSONDecodeError, Exception) as e:
+
+        print(f"Error al cargar config.json: {e}")
+
+        with open("config.json", "w", encoding="utf-8") as f:
+            json.dump({}, f)
+
+        return {}
 
 def guardar_configuracion(configuraciones):
     try:
