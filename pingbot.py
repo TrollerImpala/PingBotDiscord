@@ -16,7 +16,6 @@ def home():
 
 
 def run():
-  # Render inyecta el puerto en la variable PORT
   port = int(os.environ.get('PORT', 8080))
   app.run(host='0.0.0.0', port=port)
 
