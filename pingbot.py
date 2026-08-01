@@ -5,10 +5,10 @@ from discord.ext import commands
 from threading import Thread
 from flask import Flask
 
+from supabase import Client, create_client
 import os
 
 app = Flask(__name__)
-
 
 @app.route('/')
 def home():
@@ -30,13 +30,19 @@ keep_alive()
 from dotenv import load_dotenv
 load_dotenv()
 
-import json
+#import json
+
+url : str = os.getenv('SUPABASE_URL')
+key : str = os.getenv('SUPABASE_KEY')
+
+supabase : Client = create_client(url, key)
+
 
 intents = discord.Intents.default()
 intents.message_content = True
 
 bot = commands.Bot(command_prefix='-&', intents=intents)
-
+"""
 CONFIG_FILE = "config.json"
 
 def cargar_configuracion():
@@ -61,6 +67,8 @@ def cargar_configuracion():
 
         return {}
 
+
+
 def guardar_configuracion(configuraciones):
     try:
         with open(CONFIG_FILE, "w", encoding="utf-8") as file:
@@ -72,11 +80,29 @@ def guardar_configuracion(configuraciones):
 
 configuraciones = cargar_configuracion()
 
+"""
+configuraciones = {}
+
 @bot.event
 async def on_ready():
     print("Bot ping conectado")
+    global configuraciones
 
     try:
+        configuraciones.clear()
+        
+        res = supabase.table('config').select('*').execute()
+
+        for item in res.data:
+            guild_id = int(item['guild_id'])
+
+            if guild_id not in configuraciones:
+                configuraciones[guild_id] = []
+
+            configuraciones[guild_id].append(item)
+            
+        #configuraciones = {int(item['guild_id']): item for item in res.data}
+
         sync = await bot.tree.sync()
         print(f'Comandos sincronizados {len(sync)}')
 
@@ -93,25 +119,45 @@ async def configurar(
     canal : discord.TextChannel,
     bot_trigger : discord.User
 ):
-    inter_id = interaction.guild_id
+#   inter_id = interaction.guild_id
 
-    configuraciones[inter_id] = {
-        "rol" : rol.id,
-        "canal" : canal.id,
-        "bot" : bot_trigger.id,
-        "msg" : msg
+#    configuraciones[inter_id] = {}
+
+    #guardar_configuracion(configuraciones)
+
+    datos_config = {
+        "rol": str(rol.id),
+        "canal": str(canal.id),
+        "bot": str(bot_trigger.id),
+        "msg": msg,
+        "guild_id": str(interaction.guild_id)
     }
 
-    guardar_configuracion(configuraciones)
+    try:
+        res = supabase.table('config').insert( datos_config ).execute()
 
-    await interaction.response.send_message(
+        registro = res.data[0] if res.data else datos_config
 
-        f"✅ **Configuración guardada correctamente:**\n"
-        f"• **Canal:** {canal.mention}\n"
-        f"• **Bot:** {bot_trigger.mention}\n"
-        f"• **Rol a mencionar:** {rol.mention}\n"
-        f"• **Mensaje:** {msg}"
-    )
+        if interaction.guild_id not in configuraciones:
+            configuraciones[interaction.guild_id] = []
+        
+        configuraciones[interaction.guild_id].append(registro)
+    
+        await interaction.response.send_message(
+
+            f"✅ **Configuración guardada correctamente:**\n"
+            f"• **Canal:** {canal.mention}\n"
+            f"• **Bot:** {bot_trigger.mention}\n"
+            f"• **Rol a mencionar:** {rol.mention}\n"
+            f"• **Mensaje:** {msg}"
+        )
+        
+    except Exception as e:
+        await interaction.response.send_message(
+        f"**Error lol** : {e}",
+        ephemeral = True
+        )
+
 
 @configurar.error
 async def configurar_error(interaction : discord.Interaction, error):
@@ -129,13 +175,12 @@ async def on_message(message):
         return
 
     if message.guild and message.guild.id in configuraciones:
-        config = configuraciones[message.guild.id]
 
-        if message.author.id == config['bot'] and message.channel.id == config['canal']:
-            await message.channel.send(f"<@&{config['rol']}> {config['msg']}")
+        for config in configuraciones[message.guild.id]:
+            if message.author.id == int(config['bot']) and message.channel.id == int(config['canal']):
+                await message.channel.send(f"<@&{config['rol']}> {config['msg']}")
 
     await bot.process_commands(message)
-
 
 bot.run(os.getenv('TOKEN'))
 
